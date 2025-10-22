@@ -12,13 +12,14 @@ input_path = "raw_data"
 output_root = "python_results/czi_png_output/"
 
 CHANNEL_CONFIG = {
-    0: {"name": "MEMBRANE",  "color": "#FF00BB"},
-    1: {"name": "DIC",       "color": "#8C958C"},
-    2: {"name": "PEPTIDE",   "color": "#00FF00"},
+    0: {"name": "EEA1-ms",  "color": "#FF00BB"},
+    1: {"name": "PEPTIDE",       "color": "#CBE547"},
+    2: {"name": "EEA1-rb",   "color": "#00FF00"},
     3: {"name": "DAPI",      "color": "#009DFF"},
+    4: {"name": "DIC",      "color": "#DADDDF"}
 }
 
-INCLUDE_CHANNELS_IN_MERGE = [0, 2, 3]
+INCLUDE_CHANNELS_IN_MERGE = [0, 1, 2, 3]
 DEFAULT_MICRONS_PER_PIXEL = 0.325
 SCALEBAR_UM_FIXED = 10
 scalebar_margin_px = 20
@@ -29,7 +30,8 @@ font_path = None
 label_position = "top_left"
 
 MAKE_PANEL = True
-PANEL_ORDER = ["MEMBRANE", "PEPTIDE", "DAPI", "merged"]
+PANEL_ORDER = ["EEA1-ms", "EEA1-rb", "PEPTIDE", "DAPI"]
+#always includes the merged of these at the end
 PANEL_LAYOUT = "horizontal"
 PANEL_SPACING = 15
 PANEL_BG_COLOR = (10, 10, 10)
@@ -216,30 +218,45 @@ def process_czi_file(image_name, input_folder, output_root):
             create_panel(
                 image_folder=output_folder,
                 output_path=panel_output,
-                order=PANEL_ORDER,
+                order=PANEL_ORDER + ["merged"],  # ensure merged is last
                 layout=PANEL_LAYOUT,
                 spacing=PANEL_SPACING,
-                bg_color=PANEL_BG_COLOR
+                bg_color=PANEL_BG_COLOR,
+                include_only=True,               # <-- key: don't append others
             )
     except Exception as e:
         logger.error(f"❌ Failed on {image_name}: {e}")
 # -------------------------------------------------------
 
-
-def create_panel(image_folder, output_path, order=None, layout="horizontal", spacing=10, bg_color=(0, 0, 0)):
+def create_panel(
+    image_folder,
+    output_path,
+    order=None,
+    layout="horizontal",
+    spacing=10,
+    bg_color=(0, 0, 0),
+    include_only=False,   # NEW
+):
     pngs = [f for f in os.listdir(image_folder) if f.lower().endswith(".png")]
     if not pngs:
         logger.warning(f"No PNGs found in {image_folder}")
         return
 
     if order:
+        wanted = [name.lower() for name in order]
         sorted_pngs = []
-        for name in order:
-            matches = [f for f in pngs if name.lower() in f.lower()]
-            sorted_pngs.extend(matches)
-        for f in pngs:
-            if f not in sorted_pngs:
-                sorted_pngs.append(f)
+        for name in wanted:
+            # pick first match by substring; keep stable order; avoid dups
+            for f in pngs:
+                fl = f.lower()
+                if name in fl and f not in sorted_pngs:
+                    sorted_pngs.append(f)
+                    break  # only one per name
+        if not include_only:
+            # append any leftover files if desired
+            for f in pngs:
+                if f not in sorted_pngs:
+                    sorted_pngs.append(f)
     else:
         sorted_pngs = sorted(pngs)
 
@@ -277,6 +294,7 @@ def create_panel(image_folder, output_path, order=None, layout="horizontal", spa
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     panel.save(output_path)
     logger.info(f"Saved panel → {output_path}")
+
 # -------------------------------------------------------
 
 
