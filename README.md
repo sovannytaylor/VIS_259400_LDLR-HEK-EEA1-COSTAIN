@@ -28,4 +28,4 @@ Use this repo to automate creating PNG files from CZI microscopy data to easily 
 n/a
 
 ### Current Bugs to Fix 
-sometimes the panels are not in the correct order or are producing basically two sets of 1 panel so instead of 1x4 images its showing 1x7 or 1x8 and theres repeated images in the panel
+no bugs
